@@ -151,6 +151,10 @@ API key가 노출될 수 있으므로, Vmonster streams API 요청을 클라이�
 - `speakAIAvatar(text)`: AI Avatar에게 텍스트에 대한 발화 요청
 - `toggleUserAudio()`: 사용자 마이크 on/off
 
+### 주의사항
+
+- **세션 종료 후 새로고침 권장**: `leave()` 호출 후 완전한 클린업을 위해 페이지 새로고침(reload)을 권장합니다. 이는 WebRTC 연결 및 미디어 리소스가 확실하게 정리되도록 보장합니다.
+
 ## 기술 스택
 
 - **Framework**: Next.js 14 (App Router)
