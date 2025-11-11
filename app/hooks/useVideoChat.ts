@@ -1,0 +1,190 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+
+import { CommunicationStatus, JoinRoomStatus } from "./video-chat-types";
+import { useAskUserAudioPermission } from "./useAskUserAudioPermission";
+import useTimer from "./useTimer";
+import { useAIAvatar } from "./useAIAvatar";
+
+import { UNMUTE_USER_AUDIO_ON_JOINED, WELCOME_MESSAGE } from "./constants";
+import { useTypingEffectBySentence } from "./useTypingEffectBySentence";
+import { useTypingEffectByCharacter } from "./useTypingEffectByCharacter";
+
+interface useVideoChatProps {
+  aiAvatarId: string;
+  userId: string;
+}
+
+const useVideoChat = ({ aiAvatarId }: useVideoChatProps) => {
+  const [communicationStatus, setCommunicationStatus] =
+    useState<CommunicationStatus>("default");
+  const [isUserSpeaking, setIsUserSpeaking] = useState(false);
+
+  const handleUserSTTTranscript = async (text: string) => {
+    if (communicationStatus === "default" && text.trim() !== "") {
+      console.log("handleUserSTTTranscript", text);
+    } else {
+      console.log("handleUserSTTTranscript", text, "skip");
+    }
+  };
+
+  const [joinRoomStatus, setJoinRoomStatus] = useState<JoinRoomStatus>("idle");
+
+  const join = () => {
+    setJoinRoomStatus("joining");
+    joinRoom();
+  };
+
+  const leave = () => {
+    setJoinRoomStatus("idle");
+    leaveRoom();
+  };
+
+  const {
+    room,
+    joinRoom,
+    addAIAvatarVideo,
+    speakAIAvatar,
+    leaveRoom,
+    avatarMessages,
+    userMessages,
+    resetMessages,
+    sessionId,
+  } = useAIAvatar({
+    aiAvatarId: aiAvatarId,
+    unmuteUserAudioOnJoined: UNMUTE_USER_AUDIO_ON_JOINED,
+    onJoined: async () => {
+      // [타이머 설정] 30분 타이머를 설정합니다. useTimer 훅에 등록된 callback이 실행됩니다.
+      setTimer(30 * 60);
+      console.log("onJoined");
+
+      // [AIAvatar 비디오 추가] Joined 시점에 AIAvatar 비디오를 추가합니다.
+      addAIAvatarVideo({ width: "100%", height: "100%" });
+
+      // [상태 업데이트]
+      setJoinRoomStatus("joined");
+      setCommunicationStatus("default");
+      console.log("UNMUTE_USER_AUDIO_ON_JOINED", UNMUTE_USER_AUDIO_ON_JOINED);
+      setIsUserAudioRecording(UNMUTE_USER_AUDIO_ON_JOINED);
+
+      // [Welcome Message 발화] Joined 시점에 아바타에 Welcome Message를 발화를 요청합니다.
+      speakAIAvatar(WELCOME_MESSAGE);
+    },
+    onAiAvatarStartSpeaking: () => {
+      console.log("onAiAvatarStartSpeaking");
+      setCommunicationStatus("agent-speaking");
+    },
+    onAiAvatarStopSpeaking: () => {
+      console.log("onAiAvatarStopSpeaking");
+      setCommunicationStatus("default");
+      clearTypingContents();
+    },
+    onAiAvatarMessage: (text) => {
+      console.log("onAiAvatarMessage", text);
+      handleAgentMessage(text);
+    },
+    onLeft: () => {
+      console.log("onLeft");
+      setJoinRoomStatus("idle");
+      setCommunicationStatus("disconnected");
+      resetMessages();
+      // [권장] 확실한 연결 종료를 위해 페이지를 리로드하는 것을 권장합니다.
+      window.location.reload();
+    },
+    onUserStartSpeaking: () => {
+      setIsUserSpeaking(true);
+      console.log("onUserStartSpeaking");
+    },
+    onUserStopSpeaking: () => {
+      setIsUserSpeaking(false);
+      console.log("onUserStopSpeaking");
+    },
+    onUserSTTTranscript: handleUserSTTTranscript,
+  });
+
+  // [타이핑 효과] Option1 - 문장 단위로 타이핑 효과를 줍니다.
+  // const { clearTypingContents, handleAgentMessage, currentAvatarMessage } =
+  //   useTypingEffectBySentence();
+  // [타이핑 효과] Option2 - 글자 단위로 타이핑 효과를 줍니다.
+  const { clearTypingContents, handleAgentMessage, currentAvatarMessage } =
+    useTypingEffectByCharacter();
+
+  const handleLeave = useCallback(async () => {
+    try {
+      if (joinRoomStatus === "joined") {
+        leaveRoom();
+        // joined 된 이후 leave가 되었을 때 아래가 실행된다.
+        setCommunicationStatus("disconnected");
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  }, [joinRoomStatus, leaveRoom]);
+
+  const { remainingTime, setTimer } = useTimer({
+    callback: () => handleLeave(),
+  });
+
+  // ---- 유저 인터랙션 모드 관련 ----
+  const { isUserAudioAllowed } = useAskUserAudioPermission(); // 진입 시 오디오 권한 요청
+  const [isUserAudioRecording, setIsUserAudioRecording] = useState<
+    boolean | undefined
+  >(undefined);
+
+  useEffect(() => {
+    if (!isUserAudioAllowed !== undefined) {
+      setIsUserAudioRecording(false);
+    }
+  }, [isUserAudioAllowed]);
+
+  // 유저 오디오 토글 함수
+  const toggleUserAudio = async () => {
+    if (!room) {
+      return;
+    }
+    if (
+      isUserAudioRecording === undefined ||
+      isUserAudioAllowed === undefined ||
+      !isUserAudioAllowed
+    ) {
+      return;
+    }
+    const recording = isUserAudioRecording;
+    try {
+      if (recording) {
+        setIsUserAudioRecording(false);
+        // 유저 오디오 뮤트 - 추후 빠른 오디오 연결을 위해 트랙만 mute합니다.
+        await room.muteUserAudio();
+        // [옵션] 오디오 트랙 unpublish - 오디오 트랙 연결 자체를 끊습니다.
+        // await room.unpublishUserAudio();
+      } else {
+        setIsUserAudioRecording(true);
+        await room?.unmuteUserAudio();
+      }
+    } catch (error) {
+      setIsUserAudioRecording(recording);
+      console.error(error);
+    }
+  };
+
+  return {
+    joinRoomStatus,
+    communicationStatus,
+    currentAvatarMessage,
+    remainingTime,
+    isUserSpeaking,
+    setIsUserSpeaking,
+    isUserAudioRecording,
+    setIsUserAudioRecording,
+    isUserAudioAllowed,
+    join,
+    leave,
+    toggleUserAudio,
+    speakAIAvatar,
+    userMessages,
+    avatarMessages,
+    sessionId,
+  };
+};
+export default useVideoChat;
