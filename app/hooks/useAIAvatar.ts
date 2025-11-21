@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import Room from "vmonster-streaming-js";
+import Room, { ErrorData } from "vmonster-streaming-js";
 import { requestNewStreamLivekit } from "../utils/stream-query-utils";
 import { AvatarMessage, MessageRole, UserMessage } from "./video-chat-types";
 type STTData = {
@@ -25,6 +25,7 @@ interface UseAIAvatarProps {
   onUserSTTTranscript?: (text: string) => void;
   onLeft?: () => void;
   firstMessageTimeRef?: React.RefObject<number | null>;
+  onError?: (error: ErrorData) => void;
 }
 
 export const useAIAvatar = ({
@@ -39,6 +40,7 @@ export const useAIAvatar = ({
   onUserSTTTranscript,
   onLeft,
   firstMessageTimeRef,
+  onError,
 }: UseAIAvatarProps) => {
   const [room, setRoom] = useState<Room | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -163,6 +165,7 @@ export const useAIAvatar = ({
     onAiAvatarStopSpeaking,
     onAiAvatarMessage,
     onLeft,
+    onError,
     // 내부 핸들러
     updateMessageOnStopSpeaking,
     updateMessage,
@@ -177,6 +180,7 @@ export const useAIAvatar = ({
       onAiAvatarStopSpeaking,
       onAiAvatarMessage,
       onLeft,
+      onError,
       // 내부 핸들러
       updateMessageOnStopSpeaking,
       updateMessage,
@@ -191,6 +195,7 @@ export const useAIAvatar = ({
     updateMessageOnStopSpeaking,
     updateMessage,
     sttDataHandler,
+    onError,
   ]);
 
   //오디오 연결
@@ -239,6 +244,10 @@ export const useAIAvatar = ({
     handlersRef.current.sttDataHandler?.(data);
   }, []);
 
+  const handleError = useCallback((error: ErrorData) => {
+    handlersRef.current.onError?.(error);
+  }, []);
+
   const handleLeft = useCallback(() => {
     handlersRef.current.onLeft?.();
   }, []);
@@ -275,6 +284,7 @@ export const useAIAvatar = ({
     room.on("aiavatar-message", handleAgentMessage);
     room.on("left", handleLeft);
     room.on("stt-data", (data: STTData) => handleSttData(data));
+    room.on("error", (error: ErrorData) => handleError(error));
   };
 
   const speakAIAvatar = useCallback(

@@ -6,7 +6,7 @@ import { CommunicationStatus, JoinRoomStatus } from "./video-chat-types";
 import { useAskUserAudioPermission } from "./useAskUserAudioPermission";
 import useTimer from "./useTimer";
 import { useAIAvatar } from "./useAIAvatar";
-
+import { ErrorData } from "vmonster-streaming-js";
 import { UNMUTE_USER_AUDIO_ON_JOINED, WELCOME_MESSAGE } from "./constants";
 import { useTypingEffectBySentence } from "./useTypingEffectBySentence";
 import { useTypingEffectByCharacter } from "./useTypingEffectByCharacter";
@@ -101,6 +101,16 @@ const useVideoChat = ({ aiAvatarId }: useVideoChatProps) => {
       console.log("onUserStopSpeaking");
     },
     onUserSTTTranscript: handleUserSTTTranscript,
+    onError: (error: ErrorData) => {
+      console.error(error);
+      if (error.code === "AVATAR_ALLOCATION_FAILED") {
+        alert("Failed to allocate AI avatar");
+      } else if (error.code === "AVATAR_CONNECTION_FAILED") {
+        alert("Failed to connect to AI avatar");
+      } else if (error.code === "LLM_CONNECTION_FAILED") {
+        alert("Failed to connect to LLM");
+      }
+    },
   });
 
   // [타이핑 효과] Option1 - 문장 단위로 타이핑 효과를 줍니다.
