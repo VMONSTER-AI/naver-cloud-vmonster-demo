@@ -19,6 +19,7 @@ export async function requestNewStreamLivekit(
   const formData = new FormData();
   formData.append("aiavatar_id", config.aiAvatarId);
   formData.append("language", config.language);
+  formData.append("max_duration_s", "300"); // 세션 지속시간(초), 양의 정수 값.
 
   const response = await fetchRequest({
     method: "POST",
