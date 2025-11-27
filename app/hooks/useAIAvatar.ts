@@ -308,6 +308,13 @@ export const useAIAvatar = ({
     [room]
   );
 
+  const stopAIAvatarSpeaking = useCallback(() => {
+    if (!room) {
+      throw new Error("Room is not initialized");
+    }
+    room.stopSpeaking();
+  }, [room]);
+
   const leaveRoom = useCallback(() => {
     if (!room) {
       throw new Error("Room is not initialized");
@@ -353,5 +360,6 @@ export const useAIAvatar = ({
     avatarMessages,
     userMessages,
     resetMessages,
+    stopAIAvatarSpeaking,
   };
 };

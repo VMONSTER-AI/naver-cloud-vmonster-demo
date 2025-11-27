@@ -12,6 +12,7 @@ export default function App() {
     isUserAudioAllowed,
     join,
     leave,
+    stopAIAvatarSpeaking,
     toggleUserAudio,
     speakAIAvatar,
     userMessages,
@@ -34,6 +35,7 @@ export default function App() {
     <button onClick={leave} className="cursor-pointer bg-red-500 text-white px-4 py-2 rounded-md">Leave</button>
     <input type="text" className="border-2 border-gray-300 rounded-md p-2" value={input} onChange={(e) => setInput(e.target.value)} />
     <button onClick={() => speakAIAvatar(input)} className="cursor-pointer bg-blue-500 text-white px-4 py-2 rounded-md">Speak AIAvatar</button>
+    <button onClick={stopAIAvatarSpeaking} className="cursor-pointer bg-red-500 text-white px-4 py-2 rounded-md">Stop AIAvatar</button>
     <button onClick={toggleUserAudio} className="cursor-pointer bg-gray-500 text-white px-4 py-2 rounded-md">Toggle User Audio</button>
     <div>Join Room Status: {joinRoomStatus}</div>
     <div>Communication Status: {communicationStatus}</div>
